@@ -1,0 +1,78 @@
+#!/bin/bash
+
+if ! type "ece353" > /dev/null; then
+  echo "Cannot find the ece353 binary. Please run the setup script again."
+  exit
+fi
+
+ECE353=`ece353`
+
+# -0 -- starts telnet and continously tries to connect to the emulator
+if [[ $1 == '-0' ]]; then
+
+  # Check if we want qemu output or not.
+  if [[ $2 == '-v' ]]; then
+    OUTPUT=/dev/stdout
+  else
+    OUTPUT=/dev/null
+  fi
+
+  # Continuously tries to telnet.
+  while ! telnet localhost 4444 &> $OUTPUT; do
+    echo 'Waiting for emulator.'
+    sleep 2
+  done
+
+# -1 -- builds the android kernel without window, starts up a shell and opens up telnet connection
+elif [[ $1 == "-1" ]]; then
+
+  buildandroid
+  emulator -avd ece353avd -kernel $ECE353/arch/arm/boot/zImage -show-kernel -shell -no-window -qemu -monitor telnet::4444,server -s
+
+# --kernel -- debugs the kernel using agdb
+elif [[ $1 == 'k' || $1 == '--kernel' ]]; then
+  agdb --kernel
+
+# --user -- debugs a user application
+elif [[ $1 == '-u' || $1 == '--user' ]]; then
+  
+  # Check if the source file is provided.
+  shift
+  if [[ ! $1 ]]; then
+    echo "source file required."
+    exit
+  fi
+
+  # Remove all path components and the .c component, this is the file name to compile to.
+  F=${1##*/}
+  F=${F%.c}
+
+  # Compile the source.
+  if ! agcc -o $F $1; then
+    exit
+  fi
+
+  # Wait for adb devices to show.
+  while ! adb devices | awk 'NR==2' | grep device &> /dev/null; do
+    echo 'Waiting for device to show.'
+    sleep 2
+  done
+
+  # Push the file to the emulator device.
+  adb push $F /data/local
+
+  # Run either normally, or through gdb.
+  if [[ $2 == '--gdb' ]]; then
+    adb shell gdbserver :1234 /data/local/$F &
+    adb forward tcp:1234 tcp:1234
+    agdb --user $F
+  else
+    adb shell /data/local/$F
+  fi
+
+# builds the android kernel and runs the emulator
+else
+  buildandroid
+  emulator -avd ece353avd -kernel $ECE353/arch/arm/boot/zImage -show-kernel -shell $@
+
+fi

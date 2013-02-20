@@ -1,0 +1,30 @@
+#!/bin/bash
+
+if ! type "ece353" > /dev/null; then
+  echo "Cannot find the ece353 binary. Please run the setup script again."
+  exit
+fi
+
+ECE353=`ece353`
+
+# --kernel -- runs agdb for kernel
+if [[ $1 == '-k' || $1 == '--kernel' ]]; then
+  arm-linux-androideabi-gdb               \
+    -ex 'target remote localhost:1234'    \
+    $ECE353/vmlinux
+
+# --user -- runs agdb for userspace applications
+elif [[ $1 == '-u' || $1 == '--user' ]]; then
+  shift
+  arm-linux-androideabi-gdb               \
+    -ex 'target remote localhost:1234'    \
+    -ex 'break main'                      \
+    -ex 'continue'                        \
+    $@
+
+# runs agdb targeting the emulator
+else
+  arm-linux-androideabi-gdb               \
+    -ex 'target remote localhost:1234'    \
+    $@
+fi

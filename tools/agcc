@@ -1,0 +1,22 @@
+#!/bin/bash
+
+NDK_PREFIX="`brew --prefix android-ndk`"
+NDK_CELLAR="`brew --cellar android-ndk`"
+
+if [ $# -eq 0 ]; then
+  echo 'agcc: no input.'
+  exit
+fi
+
+$NDK_CELLAR/r8d/toolchains/arm-linux-androideabi-4.4.3/prebuilt/darwin-x86/bin/arm-linux-androideabi-gcc\
+  -I$NDK_PREFIX/platforms/android-14/arch-arm/usr/include\
+  -Bdynamic\
+  -Wl,--gc-section\
+  -Wl,-z,nocopyreloc\
+  -Wl,--no-undefined\
+  -Wl,--dynamic-linker=/system/bin/linker\
+  -Wl,-rpath-link=$NDK_PREFIX/platforms/android-14/arch-arm/usr/lib\
+  -L$NDK_PREFIX/platforms/android-14/arch-arm/usr/lib\
+  -nostdlib $NDK_PREFIX/platforms/android-14/arch-arm/usr/lib/crtend_android.o\
+  $NDK_PREFIX/platforms/android-14/arch-arm/usr/lib/crtbegin_dynamic.o\
+  -lc -g $* -landroid -lgcc

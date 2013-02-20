@@ -1,0 +1,238 @@
+#!/usr/bin/python
+
+"""
+Basic setup requirements for running, building, testing, the android kernel
+version (linux-goldfish-2.6.29).
+"""
+
+import os
+import os.path as path
+import sys
+import stat
+import subprocess as sp
+import textwrap
+
+
+verbose = False
+dry = False
+
+
+def check(string):
+  """
+  Checks the user input until either 'Y' or 'n'.
+  """
+  response = None
+  while True:
+    print string,
+    response = raw_input()
+
+    if response == 'n':
+      return False
+    if  response == 'Y':
+      return True
+
+
+def vprint(string, *args):
+  """
+  Output if the verbose flag is set.
+  """
+  if not verbose:
+    return
+
+  print string % args
+
+
+def dryrun(operation):
+  """
+  Only perform the operation if not a dryrun.
+  """
+  if dry:
+    return
+
+  operation()
+
+
+def usage(command=None):
+  """
+  Outputs the usage message.
+  """
+  output = "'%s' unrecognized.\n" % command if command else ''
+  output += """\
+      usage: setup <command> [--dryrun] [--verbose|-v]
+
+      commands:
+        install\tinstalls the required header files and tools.
+        uninstall\tuninstalls the header files and tools.
+
+      options:
+        --dryrun\tshows what operations will be performed without performing them.
+        --verbose\tshows dryrun information, and still performs the operations.
+      """
+  print textwrap.dedent(output)
+
+
+def fwrite(my_file, mode, string):
+  """
+  Convenience function for writing to a file.
+  """
+  with open(my_file, mode) as f:
+    f.write(string)
+
+
+def install(src_list, dst_list):
+  """
+  Installs the appropriate files given a source list and a destination list.
+  """
+
+  # Check if brew is installed.
+  if os.system('type brew &> /dev/null'):
+    print '\nPlease install homebrew (see the README.md)'
+    return
+  else:
+    if os.system('brew list android-ndk &> /dev/null'):
+      print '  Please run "brew install android-ndk."'
+      return
+    if os.system('brew list android-sdk &> /dev/null'):
+      print '  Please run "brew install android-sdk."'
+      return
+
+  # Install library files.
+  for src, dst in zip(src_list, dst_list):
+    print 'Linking files from %s...' % src
+
+    for f in os.listdir(src):
+      # Get the correct paths for source and destination files.
+      src_path = path.abspath(path.join(src, f))
+      dst_path = path.abspath(path.join(dst, f))
+
+      # Check if the file exists already.
+      if f in os.listdir(dst):
+        if not check('  %s already exists, override? (Y/n):' % f):
+          continue
+
+        # Check if the file is a symlink.
+        if not path.islink(dst_path):
+          if not check('  %s is not a symlink, continue? (Y/n):' % f):
+            continue
+
+        # Remove the file.
+        vprint('    Will remove %s' % dst_path)
+        dryrun(lambda: os.remove(dst_path))
+
+      # Create the new symlink
+      vprint('    Will create symlink from %s to %s' % (src_path, dst_path))
+      dryrun(lambda: os.symlink(src_path, dst_path))
+
+  # Generate a file to store the location of the repository.
+  ndk_path = '`brew --prefix android-ndk`/toolchains/arm-linux-androideabi-4.4.3/prebuilt/darwin-x86/bin'
+  tools_path = path.abspath('./tools/')
+  repo_path = path.join(tools_path, 'ece353')
+  print '\nSet the path of your ece353 repository (press enter to continue):',
+  raw_input()
+
+  if not path.exists(repo_path):
+    vprint('  Will create a file for the path.')
+    dryrun(lambda: fwrite(repo_path, 'w', 'echo "/Volumes/ECE353/android/kernel/linux-goldfish-2.6.29"'))
+
+  dryrun(lambda: sp.call([os.environ.get('EDITOR', 'vim'), repo_path]))
+  dryrun(lambda: os.chmod(repo_path, stat.S_IRWXG | stat.S_IRWXU | stat.S_IRWXO))
+
+  # Add the tools directory to the users path.
+  output = """
+      Required library files have been installed.
+      To use the tools, the following lines needs to be included in your path:
+
+      %s
+      %s
+
+      """ % (ndk_path, tools_path)
+  print textwrap.dedent(output)
+
+  if not check('Would you like the script to do this for you? (Y/n):'):
+    print 'Please include the directory in your path manually.'
+    return
+
+  # Determine which shell the user is using.
+  shell = os.environ.get('SHELL').split('/')[-1]
+  if shell:
+    shellrc = path.join(os.getenv('HOME'), '.%src' % shell)
+    vprint('Will add %s to $PATH in %s' % (path.abspath('./tools/'), shellrc))
+    dryrun(lambda: fwrite(shellrc, 'a', 'PATH=$PATH:%s' % ndk_path))
+    dryrun(lambda: fwrite(shellrc, 'a', 'PATH=$PATH:%s' % tools_path))
+  else:
+    print 'Could not determine the shell, please add the directory to your path manually.'
+
+
+def uninstall(src_list, dst_list):
+  """
+  Uninstall the previously installed library files.
+  """
+
+  for dst, src in zip(dst_list, src_list):
+    print 'Removing linked files from %s...' % src
+
+    for f in os.listdir(src):
+      # Get the correct paths for source and destination files.
+      src_path = path.abspath(path.join(src, f))
+      dst_path = path.abspath(path.join(dst, f))
+
+      # Check if the linked file exists in the destination.
+      if f in os.listdir(dst):
+        # Check for symbolic link
+        if not path.islink(dst_path):
+          if not check('  %s is not a symlink, remove anyway? (Y/n): ' % f):
+            continue
+
+        # Check if the targeted file is a symlink of our library (and not somewhere else).
+        elif not path.samefile(dst_path, src_path):
+          if not check('  %s is not a symlink from this library, remove anyway? (Y/n):' % f):
+            continue
+
+        # Remove the file.
+        vprint('  Will remove file %s' % dst_path)
+        dryrun(lambda: os.remove(dst_path))
+
+      else:
+        vprint('  %s not found in destination directory.' % f)
+
+  output = """
+      Note: the header files have been uninstalled but you must remove the
+            directory previously added to your path yourself.
+
+            You will also need to uninstall the following homebrew packages yourself:
+
+              - android-sdk
+              - android-ndk
+
+            and homebrew itself (if you no longer want it installed).
+      """
+  print textwrap.dedent(output)
+
+
+def main(args):
+  global verbose, dry
+
+  # TODO(johnliu): Bad args check.
+  failed = len(args) == 0
+  dry = '--dryrun' in args
+  verbose = '-v' in args or '--verbose' in args or dry
+
+  if not failed:
+    dst_list = ['/usr/include/', '/usr/local/bin/']
+    src_list = ['./links/include/', './links/bin/']
+
+    if args[0] == 'install':
+      install(src_list, dst_list)
+    elif args[0] == 'uninstall':
+      uninstall(src_list, dst_list)
+    else:
+      failed = True
+
+  if failed:
+    usage()
+
+
+if __name__ == '__main__':
+  if os.geteuid() != 0:
+    os.execvp('sudo', ['sudo'] + sys.argv)
+  main(sys.argv[1:])

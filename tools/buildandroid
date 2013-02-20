@@ -1,0 +1,18 @@
+#!/bin/bash
+
+if ! type "ece353" > /dev/null; then
+  echo "Cannot find ece353 binary. Please run the setup script again."
+  exit
+fi
+
+ECE353=`ece353`
+
+# Change to the kernel directory.
+cd $ECE353
+if [ $? -ne 0 ]; then
+  echo "Failed to change to kernel directory."
+  exit
+fi
+
+# Build android.
+make -j2 ARCH=arm CROSS_COMPILE="`brew --prefix android-ndk`/toolchains/arm-linux-androideabi-4.4.3/prebuilt/darwin-x86/bin/arm-linux-androideabi-"
