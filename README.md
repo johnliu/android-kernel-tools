@@ -1,7 +1,7 @@
 Android Kernel Tools
 ====================
 
-Tools for building, running, compiling the Android Kernel (linux-goldfish-2.6.29) on Mac OS X.
+Tools for building, running, debugging the Android Kernel (linux-goldfish-2.6.29) on Mac OS X.
 
 
 ## Requirements
@@ -28,6 +28,12 @@ Install Xcode from the App Store and install Command Line Tools.
 Install Homebrew (http://mxcl.github.com/homebrew/)
 ```sh
 ruby -e "$(curl -fsSL https://raw.github.com/mxcl/homebrew/go)"
+```
+
+Install the android ndk and sdk.
+```sh
+brew install android-sdk
+brew install android-ndk
 ```
 
 
