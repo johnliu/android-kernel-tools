@@ -97,6 +97,7 @@ runandroid -1                   # builds the android kernel then runs it with a 
 
 runandroid --user program.c     # compiles the userspace program and runs it under agdb
 runuser program.c               # same as previous command
+runuser --gdb program.c         # runs the user program under agdb
 
 runandroid --kernel             # runs the kernel under agdb
 runkernel                       # same as previous command

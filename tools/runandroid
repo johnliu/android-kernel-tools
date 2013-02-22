@@ -33,6 +33,12 @@ elif [[ $1 == "-1" ]]; then
 
 # --kernel -- debugs the kernel using agdb
 elif [[ $1 == 'k' || $1 == '--kernel' ]]; then
+  # Wait for adb devices to show.
+  while ! adb devices | awk 'NR==2' | grep device &> /dev/null; do
+    echo 'Waiting for device to show.'
+    sleep 2
+  done
+
   agdb --kernel
 
 # --user -- debugs a user application
@@ -40,6 +46,11 @@ elif [[ $1 == '-u' || $1 == '--user' ]]; then
   
   # Check if the source file is provided.
   shift
+  if [[ $1 == '--gdb' ]]; then
+          DEBUG=true
+          shift
+  fi
+
   if [[ ! $1 ]]; then
     echo "source file required."
     exit
@@ -64,12 +75,14 @@ elif [[ $1 == '-u' || $1 == '--user' ]]; then
   adb push $F /data/local
 
   # Run either normally, or through gdb.
-  if [[ $2 == '--gdb' ]]; then
-    adb shell gdbserver :1234 /data/local/$F &
+  shift
+  if [[ $DEBUG ]]; then
+    echo $@
+    adb shell gdbserver :1234 /data/local/$F $@ &
     adb forward tcp:1234 tcp:1234
     agdb --user $F
   else
-    adb shell /data/local/$F
+    adb shell "/data/local/$F $@"
   fi
 
 # builds the android kernel and runs the emulator
