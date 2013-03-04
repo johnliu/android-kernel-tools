@@ -1,0 +1,23 @@
+#/bin/bash
+
+if [[ ! $3 ]]; then
+  echo "sensorsim: missing arguments"
+  echo "usage: sensorsim AZIMUTH PITCH ROLL"
+  exit
+fi
+
+# Wait for adb devices to show.
+while ! adb devices | awk 'NR==2' | grep device &> /dev/null; do
+  echo 'Waiting for device to show.'
+  sleep 2
+done
+
+DEVICE=`adb devices | awk 'NR==2 {print $1}'`
+PORT=${DEVICE##*-}
+echo $DEVICE
+
+expect <<EOF
+spawn telnet localhost $PORT
+expect "OK"
+send "sensor set orientation $1:$2:$3\r\n"
+EOF

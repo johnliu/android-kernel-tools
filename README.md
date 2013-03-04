@@ -101,6 +101,9 @@ runuser --gdb program.c         # runs the user program under agdb
 
 runandroid --kernel             # runs the kernel under agdb
 runkernel                       # same as previous command
+
+# sensorsim:
+sensorsim 1 2 3   # set the azimuth, pitch and roll for the currently running device
 ```
 
 ### Typical Workflow
