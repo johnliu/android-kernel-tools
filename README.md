@@ -114,6 +114,26 @@ sensorsim 1 2 3   # set the azimuth, pitch and roll for the currently running de
 3.  Either `runuser program.c` or `runkernel` depending on whether kernel is being tested
     or userspace program is being tested.
 
+## FAQ
+
+Q: There no available targets for building.
+A: After performing `brew install android-sdk`, please install the targets.
+   Specifically version 14 of the sdk.
+
+Q: There are problems immediately after installing.
+A: Run through the setup steps in lab 2. 
+
+Q: You have not configured your kernel...
+A: You need to run `make ARCH=arm goldfish_armv7_defconfig`, and configure
+   the kernel as done in lab 2 (see lab 2 guidelines).
+
+Q: Do you have support for XXX tool?
+A: Probably, update your tools first by doing git pull. If said tools 
+   don't exist, make an issue.
+
+Q: A problem about `ASENSOR_TYPE_ORIENTATION` not found.
+A: You need to add `ASENSOR_TYPE_ORIENTATION = 3` to the `sensor.h` file. See lab
+   3 guidelines for details.
 
 ## Other Resources
 

@@ -135,6 +135,10 @@ def install(src_list, dst_list):
     dryrun(lambda: fwrite(repo_path, 'w', 'echo "/Volumes/ECE353/android/kernel/linux-goldfish-2.6.29"'))
 
   dryrun(lambda: sp.call([os.environ.get('EDITOR', 'vim'), repo_path]))
+  while os.system('cd `%s` &> /dev/null' % repo_path):
+    print '  Path for ece353 repository does not exist. Please try again:',
+    raw_input()
+    dryrun(lambda: sp.call([os.environ.get('EDITOR', 'vim'), repo_path]))
   dryrun(lambda: os.chmod(repo_path, stat.S_IRWXG | stat.S_IRWXU | stat.S_IRWXO))
 
   # Add the tools directory to the users path.
@@ -157,10 +161,11 @@ def install(src_list, dst_list):
   if shell:
     shellrc = path.join(os.getenv('HOME'), '.%src' % shell)
     vprint('Will add %s to $PATH in %s' % (path.abspath('./tools/'), shellrc))
-    dryrun(lambda: fwrite(shellrc, 'a', 'PATH=$PATH:%s' % ndk_path))
-    dryrun(lambda: fwrite(shellrc, 'a', 'PATH=$PATH:%s' % tools_path))
+    dryrun(lambda: fwrite(shellrc, 'a', 'PATH=$PATH:%s\n' % ndk_path))
+    dryrun(lambda: fwrite(shellrc, 'a', 'PATH=$PATH:%s\n' % tools_path))
   else:
     print 'Could not determine the shell, please add the directory to your path manually.'
+  print 'Please restart the terminal to use the tools.'
 
 
 def uninstall(src_list, dst_list):
